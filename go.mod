@@ -1,4 +1,4 @@
-module github.com/authorizationMiddleware
+module github.com/gmlalfjr/go_authMiddleware
 
 go 1.16
 
