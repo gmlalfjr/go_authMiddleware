@@ -10,8 +10,8 @@ import (
 	commonResponse "github.com/gmlalfjr/go_CommonResponse/utils"
 )
 
-func VerifyAuthorization(jwtSecret string) {
-	var c *gin.Context = &gin.Context{}
+func VerifyAuthorization(c *gin.Context) {
+
 	getHeader := c.GetHeader("Authorization")
 	if len(getHeader) <= 0 {
 		c.JSON(http.StatusBadRequest, commonResponse.NewBadRequest("Bad request"))
@@ -29,7 +29,7 @@ func VerifyAuthorization(jwtSecret string) {
 	fmt.Println(tokenString, "token string")
 	claims := jwt.MapClaims{}
 	_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(jwtSecret), nil
+		return []byte("accessToken"), nil
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
