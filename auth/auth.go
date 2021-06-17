@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -19,22 +18,17 @@ func VerifyAuthorization(c *gin.Context) {
 		return
 	}
 	if !strings.Contains(getHeader, "Bearer") {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": string("Invalid Token"),
-		})
+		c.JSON(http.StatusBadRequest, commonResponse.ForbiddenError("Invalid Token"))
 		c.Abort()
 		return
 	}
 	tokenString := strings.Replace(getHeader, "Bearer ", "", -1)
-	fmt.Println(tokenString, "token string")
 	claims := jwt.MapClaims{}
 	_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte("accessToken"), nil
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, commonResponse.ForbiddenError("Token Expired"))
 		c.Abort()
 		return
 	}
