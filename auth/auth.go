@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -9,32 +10,43 @@ import (
 	commonResponse "github.com/gmlalfjr/go_CommonResponse/utils"
 )
 
-func VerifyAuthorization(c *gin.Context) {
+func VerifyAuthorization(secret string) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		getHeader := ctx.GetHeader("Authorization")
+		if len(getHeader) == 0 {
+			err := errors.New("authorization header is not provided")
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, commonResponse.NewBadRequest(err.Error()))
+			return
+		}
 
-	getHeader := c.GetHeader("Authorization")
-	if len(getHeader) <= 0 {
-		c.JSON(http.StatusBadRequest, commonResponse.NewBadRequest("Bad request"))
-		c.Abort()
-		return
-	}
-	if !strings.Contains(getHeader, "Bearer") {
-		c.JSON(http.StatusBadRequest, commonResponse.ForbiddenError("Invalid Token"))
-		c.Abort()
-		return
-	}
-	tokenString := strings.Replace(getHeader, "Bearer ", "", -1)
-	claims := jwt.MapClaims{}
-	_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte("accessToken"), nil
-	})
-	if err != nil {
-		c.JSON(http.StatusBadRequest, commonResponse.ForbiddenError("Token Expired"))
-		c.Abort()
-		return
-	}
+		if !strings.Contains(getHeader, "Bearer") {
+			ctx.JSON(http.StatusBadRequest, commonResponse.NewBadRequest("invalid authorization header format"))
+			ctx.Abort()
+			return
+		}
 
-	for key, val := range claims {
-		c.Set(key, val)
+		keyFunc := func(token *jwt.Token) (interface{}, error) {
+			_, ok := token.Method.(*jwt.SigningMethodHMAC)
+			if !ok {
+				ctx.JSON(http.StatusBadRequest, commonResponse.NewBadRequest("invalid Token"))
+				ctx.Abort()
+				// return nil, errors.New("Invalid Token")
+			}
+			return []byte(secret), nil
+		}
+
+		claims := jwt.MapClaims{}
+		accessToken := strings.Replace(getHeader, "Bearer ", "", -1)
+		_, err := jwt.ParseWithClaims(accessToken, claims, keyFunc)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, commonResponse.ForbiddenError("Token Expired"))
+			ctx.Abort()
+			return
+		}
+
+		for key, val := range claims {
+			ctx.Set(key, val)
+		}
+		ctx.Next()
 	}
-	c.Next()
 }
